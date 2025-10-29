@@ -1,0 +1,82 @@
+# Romish backend .gitignore
+
+# Node
+node_modules/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Uploads and user data
+public/uploads/
+uploads/
+
+# Logs and runtime files
+logs/
+*.log
+pids/
+*.pid
+
+# Coverage and test output
+coverage/
+
+# Build output
+dist/
+
+# Database files / dumps
+*.sqlite
+*.db
+dump/
+mongodump/
+
+# Keys / certificates
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# temp scripts or local helpers
+scripts/temp*
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+coverage/
+.nyc_output/
+
+# Production
+dist/
+build/

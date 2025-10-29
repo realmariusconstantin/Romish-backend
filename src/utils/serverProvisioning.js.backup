@@ -1,0 +1,150 @@
+/**
+ * Server Provisioning Service
+ * Handles server creation and configuration upload to Dathost
+ */
+
+import { writeConfigFiles } from './matchzyConfig.js';
+import { 
+  startServer, 
+  waitForServer,
+  getServerStatus,
+  convertMapName
+} from './dathostApi.js';
+import { uploadFiles } from './ftpManager.js';
+import { executeRconCommand } from './rconClient.js';
+import { dathostConfig } from '../config/dathost.config.js';
+import config from '../config/env.js';
+import fs from 'fs';
+
+/**
+ * Provision server for a match
+ * @param {Object} match - Match document
+ * @param {number} matchId - Match ID counter
+ * @returns {Object} Server info (ip, password, serverId)
+ */
+export const provisionServer = async (match, matchId) => {
+  try {
+    console.log(`🚀 Starting server provisioning for match ${match.matchId}...`);
+    
+    // Use existing Dathost server ID from environment
+    const serverId = config.dathostServerId;
+    
+    if (!serverId) {
+      throw new Error('DATHOST_SERVER_ID not configured in environment');
+    }
+    
+    console.log(`🎮 Using Dathost server: ${serverId}`);
+    
+    // Step 1: Start the server if not running
+    console.log(`▶️  Starting server...`);
+    await startServer(serverId);
+    
+    // Step 2: Wait for server to be ready
+    console.log(`⏳ Waiting for server to boot...`);
+    const isReady = await waitForServer(serverId, 20);
+    if (!isReady) {
+      throw new Error('Server did not become ready in time');
+    }
+    
+    // Step 3: Generate MatchZy config files
+    console.log(`� Generating MatchZy configuration files...`);
+    const configFiles = writeConfigFiles(match, matchId);
+    
+    // Step 4: Upload config files via FTP
+    console.log(`📤 Uploading configuration files via FTP...`);
+    
+    const filesToUpload = [
+      {
+        local: configFiles.gameConfigPath,
+        remote: 'cfg/MatchZy/gameConfig.json'
+      },
+      {
+        local: configFiles.whitelistPath,
+        remote: 'cfg/MatchZy/whitelist.cfg'
+      },
+      {
+        local: configFiles.autoSetupPath,
+        remote: 'cfg/MatchZy/autoSetup.cfg'
+      }
+    ];
+    
+    await uploadFiles(filesToUpload);
+    
+    console.log(`✅ All configuration files uploaded successfully`);
+    
+    // Step 5: Wait 7 seconds for files to sync on the server
+    console.log(`⏳ Waiting for files to sync (7 seconds)...`);
+    await new Promise(resolve => setTimeout(resolve, 7000));
+    
+    // Step 6: Execute the autoSetup config via direct RCON connection
+    console.log(`🎮 Executing MatchZy autoSetup via direct RCON...`);
+    try {
+      await executeRconCommand('exec MatchZy/autoSetup.cfg');
+      console.log(`   ✓ MatchZy autoSetup.cfg executed successfully`);
+    } catch (rconError) {
+      console.error(`   ⚠️  RCON execution failed:`, rconError.message);
+      console.log(`   ℹ️  Server may still work if MatchZy is configured properly`);
+    }
+    
+    // Wait an additional moment for MatchZy to load the config
+    console.log(`⏳ Waiting for MatchZy to load config (3 seconds)...`);
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    console.log(`✅ Server is ready for players!`);
+    
+    // Cleanup temporary files
+    configFiles.cleanup();
+    
+    // Use configured server connection info (no password needed)
+    const serverIp = config.serverIp;
+    const serverPort = config.serverPort;
+    
+    console.log(`📍 Server connection: ${serverIp}:${serverPort}`);
+    
+    return {
+      success: true,
+      serverInfo: {
+        ip: serverIp,
+        port: serverPort,
+        password: '', // No password needed
+        rconPassword: '', // Not exposed to players
+        serverId: serverId,
+        connectString: `connect ${serverIp}:${serverPort}`,
+      }
+    };
+    
+  } catch (error) {
+    console.error(`❌ Server provisioning failed:`, error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * Stop and delete a Dathost server
+ * @param {string} serverId - Dathost server ID
+ * @returns {boolean} Success status
+ */
+export const stopServer = async (serverId) => {
+  try {
+    console.log(`🛑 Stopping server ${serverId}...`);
+    
+    const success = await deleteMatchServer(serverId);
+    
+    if (success) {
+      console.log(`✅ Server stopped and deleted successfully`);
+    }
+    
+    return success;
+  } catch (error) {
+    console.error(`❌ Failed to stop server:`, error);
+    return false;
+  }
+};
+
+export default {
+  provisionServer,
+  stopServer
+};
