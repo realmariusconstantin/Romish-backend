@@ -1,5 +1,5 @@
 ---
-## ⚙️ 3️⃣ **Backend Repo – `Romish-backend`**
+## **Backend Repo – `Romish-backend`**
 **File:** `/README.md`
 ```markdown
 # ⚙️ Romish.gg Backend
