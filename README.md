@@ -1,7 +1,3 @@
----
-## **Backend Repo – `Romish-backend`**
-**File:** `/README.md`
-```markdown
 # ⚙️ Romish.gg Backend
 
 The Romish.gg backend powers all matchmaking logic, user management, and server integration for the CS2 10-man system.
